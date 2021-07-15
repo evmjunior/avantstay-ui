@@ -62,6 +62,10 @@ export const CalendarContainer = styled.div`
     }
   }
 
+  & .rdr-MonthAndYear-innerWrapper.single {
+    justify-content: flex-start;
+  }
+
   & .rdr-Calendar:last-child {
     margin-left: 30px;
 
@@ -127,6 +131,9 @@ export const CalendarContainer = styled.div`
     }
     & .rdr-Calendar:last-child .rdr-MonthAndYear-button.prev {
       visibility: hidden;
+    }
+    & .rdr-Calendar:first-child .rdr-MonthAndYear-button.next-single {
+      visibility: visible;
     }
   }
 
@@ -269,7 +276,7 @@ export const FieldsContainer = styled('div')`
   }
 `
 
-export const ClearButtonContainer = styled('div')`
+export const ClearButtonContainer = styled('div')<{ singleMonthPicker?: boolean }>`
   height: 60px;
   justify-content: center;
   width: 100%;
@@ -283,6 +290,16 @@ export const ClearButtonContainer = styled('div')`
     left: calc(50% - 40px);
     height: 40px;
   }
+
+  ${props =>
+    props.singleMonthPicker &&
+    `
+    ${MINW_SM_SCREEN} {
+      width: 50px;
+      left: auto;
+      right: 20px;
+    } 
+  `}
 
   &::before {
     content: '';
@@ -305,16 +322,14 @@ interface ClearButtonProps {
 }
 
 export const ClearButton = styled.button<ClearButtonProps>`
-  width: 80px;
-  border: 2px solid ${ERROR};
-  border-radius: 99px;
+  border: none;
   background: white;
   height: 24px;
   line-height: 19px;
   font-weight: 500;
   text-transform: uppercase;
   color: ${ERROR};
-  font-size: 12px;
+  font-size: 13px;
   display: ${p => (p.show ? 'flex' : 'none')};
   align-items: center;
   justify-content: center;

@@ -34,6 +34,7 @@ export interface DateRangePickerProps {
   minDate?: AnyDate | DateFactory
   maxDate?: AnyDate | DateFactory
   dateLimit?: DateFactory
+  singleDateRange?: boolean
   linkedCalendars?: boolean
   twoStepChange?: boolean
   onInit?: (range: DateRange<undefined>) => void
@@ -68,6 +69,7 @@ class DateRangePicker extends Component<DateRangePickerProps, DateRangePickerSta
     format: 'DD/MM/YYYY',
     specialDays: [],
     twoStepChange: false,
+    singleDateRange: false,
     clearButtonLabel: 'Clear',
     showApply: false,
     applyLabel: 'Apply',
@@ -151,6 +153,12 @@ class DateRangePicker extends Component<DateRangePickerProps, DateRangePickerSta
 
     const range = { startDate, endDate }
 
+    if (this.props.singleDateRange) {
+      this.step = 0
+      range.startDate = date as AnyDate
+      range.endDate = range.startDate
+    }
+
     switch (this.step) {
       case 0:
         range.startDate = date as AnyDate
@@ -207,6 +215,7 @@ class DateRangePicker extends Component<DateRangePickerProps, DateRangePickerSta
       clearButtonLabel,
       onChange,
       horizontalAlignment,
+      singleDateRange,
     } = this.props
 
     const { range, link } = this.state
@@ -224,6 +233,7 @@ class DateRangePicker extends Component<DateRangePickerProps, DateRangePickerSta
       minDate,
       maxDate,
       specialDays,
+      singleDateRange,
       link: linkedCalendars && link,
       linkCB: this.moveCalendarDisplay,
       onChange: this.handleSelect,
@@ -235,7 +245,7 @@ class DateRangePicker extends Component<DateRangePickerProps, DateRangePickerSta
           <div className={classes.dateRange}>
             <div>
               <Calendar {...calendarProps} offset={0} />
-              <ClearButtonContainer>
+              <ClearButtonContainer singleMonthPicker={singleDateRange}>
                 <ClearButton show={Boolean(range.startDate || range.endDate)} onClick={this.clearRange}>
                   {clearButtonLabel}
                 </ClearButton>
@@ -243,7 +253,7 @@ class DateRangePicker extends Component<DateRangePickerProps, DateRangePickerSta
                   <IconClose />
                 </CloseButton>
               </ClearButtonContainer>
-              <Calendar {...calendarProps} offset={1} />
+              {!singleDateRange && <Calendar {...calendarProps} offset={1} />}
             </div>
             <ApplyButton
               show={showApply}

@@ -25,6 +25,7 @@ DateRangePickerStories.add('Default usage', () => (
     )}
     <div className="oito">
       <DateRangePicker
+        singleDateRange={boolean('singleDateRange', false)}
         show={boolean('show', true)}
         onChange={action('DateRangePicker[onChange]')}
         onClose={action('DateRangePicker[onClose]')}
@@ -77,6 +78,7 @@ DateRangePickerStories.add('Default usage', () => (
         <div className="oito">
           <DateRangePicker
             show={boolean('show', true)}
+            singleDateRange={boolean('singleDateRange', false)}
             onChange={action('DateRangePicker[onChange]')}
             onClose={action('DateRangePicker[onClose]')}
             onInit={action('DateRangePicker[onInit]')}
@@ -100,13 +102,18 @@ DateRangePickerStories.add('Default usage', () => (
       sapiente!
       <div style={{ width: 200, margin: '50px auto', background: 'yellow' }}>
         <span>Lorem ipsum dolor</span>
-        <DateRangePicker show={boolean('show', true)} horizontalAlignment="right" />
+        <DateRangePicker
+          show={boolean('show', true)}
+          singleDateRange={boolean('singleDateRange', false)}
+          horizontalAlignment="right"
+        />
       </div>
     </div>
   ))
   .add('With apply button', () => (
     <DateRangePicker
       show={boolean('show', true)}
+      singleDateRange={boolean('singleDateRange', false)}
       showApply={boolean('showApply', true)}
       applyLabel={text('applyLabel', 'Apply')}
       startDate={text('startDate', '2019-01-01')}
