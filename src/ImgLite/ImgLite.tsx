@@ -1,31 +1,33 @@
 import { isMobile } from 'is-mobile'
 import debounce from 'lodash/debounce'
-import React, {
-  forwardRef,
-  memo,
-  MutableRefObject,
-  RefObject,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from 'react'
+import * as React from 'react'
+import ResizeObserver from 'resize-observer-polyfill'
 import { Fit, Gravity, ImgLiteRef } from './__types'
 import * as S from './ImgLite.styles'
 import thumbnail from './thumbnail'
+
+// Standard image sizes stored in our cache. [ [ height, width ] ]
+const STANDARD_SIZES = [
+  [256, 384],
+  [378, 568],
+  [512, 768],
+  [597, 896],
+  [682, 1024],
+  [853, 1280],
+  [1280, 1920],
+]
 
 const AUTO_DENSITY = isMobile() ? 1.5 : 1
 
 function setRefCurrent(ref: React.Ref<any>, value: any) {
   if (!ref) return
 
-  const mutableRef = ref as MutableRefObject<any>
+  const mutableRef = ref as React.MutableRefObject<any>
   mutableRef.current = value
 }
 
 function useOuterRef<E, T extends React.Ref<E>>(externalRef: T) {
-  return useMemo((): React.Ref<E> => {
+  return React.useMemo((): React.Ref<E> => {
     const internalRef = ((element: E) => {
       setRefCurrent(internalRef, element)
 
@@ -40,6 +42,24 @@ function useOuterRef<E, T extends React.Ref<E>>(externalRef: T) {
 
     return internalRef
   }, [externalRef])
+}
+
+const findNextLargestSize = (height: number, width: number): { newHeight: number; newWidth: number } => {
+  let newSizes = {
+    newHeight: 0,
+    newWidth: 0,
+  }
+
+  for (let i = 0; i < STANDARD_SIZES.length; i++) {
+    const currentSize = STANDARD_SIZES[i]
+    if (height <= currentSize[0] && width <= currentSize[1]) {
+      newSizes.newHeight = currentSize[0]
+      newSizes.newWidth = currentSize[1]
+      break
+    }
+  }
+
+  return newSizes
 }
 
 export interface ImgLiteOwnProps {
@@ -58,7 +78,13 @@ export interface ImgLiteOwnProps {
   sharpen?: string
   sizingStep?: number
   src: string
+  useOriginalFile?: boolean
   width?: number
+}
+
+interface Dimensions {
+  width: number
+  height: number
 }
 
 export type ImgLiteProps = ImgLiteOwnProps &
@@ -66,6 +92,27 @@ export type ImgLiteProps = ImgLiteOwnProps &
     | Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'children' | 'onError' | 'onLoad'>
     | React.HTMLAttributes<HTMLDivElement>
   )
+
+const shouldSkipReloading = (newDimensions: Dimensions, dimensions?: Dimensions) => {
+  if (!dimensions) {
+    return false
+  }
+  // skip on scaling image container down
+  // browser should reuse already loaded (bigger) image
+  if (newDimensions.width <= dimensions.width && newDimensions.height <= dimensions.height) {
+    return true
+  }
+  // skip on resizing less than 10%
+  // useful for example when we have full scree image and there is scrollbar appearing during page load
+  if (
+    Math.abs(newDimensions.width - dimensions.width) / dimensions.width < 0.1 &&
+    Math.abs(newDimensions.height - dimensions.height) / dimensions.height < 0.1
+  ) {
+    return true
+  }
+
+  return false
+}
 
 function _ImgLite(
   {
@@ -82,17 +129,18 @@ function _ImgLite(
     sharpen,
     sizingStep,
     src,
+    useOriginalFile = false,
     width,
     ...otherProps
   }: ImgLiteProps,
   ref: ImgLiteRef
 ) {
-  const [currentImage, setCurrentImage] = useState<string>()
+  const [currentImage, setCurrentImage] = React.useState<string>()
   const imageRef = useOuterRef(ref)
-  const loading = !currentImage
+  const [dimensions, setDimensions] = React.useState<Dimensions | undefined>(undefined)
 
-  const updateCurrentImage = useCallback(() => {
-    const imageElement = (imageRef as RefObject<HTMLElement>).current
+  const updateCurrentImage = React.useCallback(() => {
+    const imageElement = (imageRef as React.RefObject<HTMLElement>).current
 
     const elementHeight = imageElement ? imageElement.offsetHeight : 0
     const elementWidth = imageElement ? imageElement.offsetWidth : 0
@@ -104,15 +152,31 @@ function _ImgLite(
       return
     }
 
+    const { newHeight, newWidth } = findNextLargestSize(maxHeight, maxWidth)
+
+    const useStandardSize = src.includes('amazonaws.com/homes/') && !!newHeight && !!newWidth
+
+    const newDimensions: Dimensions = {
+      width: useStandardSize ? newWidth : maxWidth,
+      height: useStandardSize ? newHeight : maxHeight,
+    }
+
+    if (shouldSkipReloading(newDimensions, dimensions)) {
+      return
+    }
+
+    setDimensions(newDimensions)
+
     const newSrc = thumbnail(src, {
+      density,
       fit,
       gravity,
-      height: maxHeight,
-      width: maxWidth,
-      density,
-      sizingStep,
+      height: newDimensions.height,
       quality,
       sharpen,
+      sizingStep: useStandardSize ? 1 : sizingStep,
+      useOriginalFile,
+      width: newDimensions.width,
     })
 
     if (onError || onLoad) {
@@ -128,18 +192,36 @@ function _ImgLite(
     } else {
       setCurrentImage(newSrc)
     }
-  }, [density, fit, gravity, height, imageRef, onError, onLoad, quality, sharpen, sizingStep, src, width])
+  }, [
+    density,
+    dimensions,
+    fit,
+    gravity,
+    height,
+    imageRef,
+    onError,
+    onLoad,
+    quality,
+    sharpen,
+    sizingStep,
+    src,
+    useOriginalFile,
+    width,
+  ])
 
-  useLayoutEffect(() => updateCurrentImage(), [updateCurrentImage])
+  React.useLayoutEffect(updateCurrentImage, [updateCurrentImage])
 
-  useEffect(() => {
-    const debouncedUpdateCurrentImage = debounce(() => updateCurrentImage(), 200)
-    window.addEventListener('resize', debouncedUpdateCurrentImage)
+  React.useEffect(() => {
+    const imageElement = (imageRef as React.RefObject<HTMLElement>).current
 
-    return () => {
-      window.removeEventListener('resize', debouncedUpdateCurrentImage)
-    }
-  }, [updateCurrentImage])
+    if (imageElement === null) return
+
+    const debouncedUpdateCurrentImage = debounce(updateCurrentImage, 100)
+    const observer = new ResizeObserver(debouncedUpdateCurrentImage)
+
+    observer.observe(imageElement)
+    return () => observer.unobserve(imageElement)
+  }, [imageRef, updateCurrentImage])
 
   return (
     <S.ImageBackground
@@ -153,4 +235,4 @@ function _ImgLite(
   )
 }
 
-export default memo(forwardRef(_ImgLite))
+export const ImgLite = React.memo(React.forwardRef(_ImgLite))

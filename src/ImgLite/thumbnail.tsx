@@ -1,6 +1,6 @@
 import queryString from 'query-string'
-import { ImgLiteThumbnailOptions } from './__types'
 import { checkWebPSupport } from 'supports-webp-sync'
+import { ImgLiteThumbnailOptions } from './__types'
 
 const hasWebPSupport = checkWebPSupport()
 
@@ -17,19 +17,19 @@ function getImageAddress(url: string) {
 
 export default function (
   url: string,
-  { sizingStep, density = 1, width = 0, height = 0, ...options }: ImgLiteThumbnailOptions = {}
+  { density = 1, height = 0, sizingStep, useOriginalFile = false, width = 0, ...options }: ImgLiteThumbnailOptions = {}
 ) {
-  const isLocalFile =
-    globalThis && globalThis.location && /localhost/.test(globalThis.location.host) && url && !/^http/i.test(url)
+  const isLocalhost = globalThis && globalThis.location && /localhost/.test(globalThis.location.host)
+  const isLocalFile = isLocalhost && url && !/^http/i.test(url)
   const isBlobOrDataUrl = url && /^(blob|data):/i.test(url)
   const isSvg = url && /\.svg$/.test(url)
 
-  if (!url || isLocalFile || isSvg || isBlobOrDataUrl) {
+  if (!url || isLocalFile || isSvg || isBlobOrDataUrl || useOriginalFile) {
     return url
   }
 
   const biggestDim = Math.max.call(null, width, height)
-  const _sizingStep = sizingStep || biggestDim < 1000 ? 100 : 200
+  const _sizingStep = sizingStep === 1 ? 1 : sizingStep || biggestDim < 1000 ? 100 : 200
 
   return queryString.stringifyUrl(
     {
@@ -37,8 +37,8 @@ export default function (
       query: {
         ...options,
         ...(hasWebPSupport ? { format: 'Webp' } : {}),
-        ...(height ? { 'size[height]': density * Math.ceil(height / _sizingStep) * _sizingStep } : {}),
-        ...(width ? { 'size[width]': density * Math.ceil(width / _sizingStep) * _sizingStep } : {}),
+        ...(height ? { 'size[height]': Math.round(density * Math.ceil(height / _sizingStep) * _sizingStep) } : {}),
+        ...(width ? { 'size[width]': Math.round(density * Math.ceil(width / _sizingStep) * _sizingStep) } : {}),
         image_address: getImageAddress(url),
       } as any,
     },

@@ -1,8 +1,11 @@
 {
   "name": "@avantstay/avantstay-ui",
-  "version": "7.0.0",
+  "version": "7.2.10",
   "homepage": "https://github.com/avantstay/avantstay-ui",
   "bugs": "https://github.com/avantstay/avantstay-ui/issues",
+  "files": [
+    "lib"
+  ],
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "repository": {
@@ -11,14 +14,15 @@
   },
   "scripts": {
     "build": "shx rm -rf lib && webpack --progress",
+    "build-storybook": "build-storybook",
+    "clear-cache": "tsc clear cache",
     "eslint:all": "eslint --ext .ts --ext .tsx src",
     "eslint:fix": "eslint --ext .ts --ext .tsx --fix src",
+    "prepublishOnly": "yarn build",
     "prettier:all": "prettier --check src",
     "prettier:fix": "prettier --write src",
     "start": "start-storybook -p 6006",
-    "prepublishOnly": "yarn build",
-    "build-storybook": "build-storybook",
-    "clear-cache": "tsc clear cache"
+    "watch": "webpack --watch"
   },
   "dependencies": {
     "@types/react-router-dom": "^5.1.5",
@@ -34,6 +38,7 @@
     "react-dom": "^16.9.0",
     "react-renderif-hoc": "^0.0.1",
     "react-router-dom": "^5.2.0",
+    "resize-observer-polyfill": "^1.5.1",
     "styled-components": "^5.1.0",
     "supports-webp-sync": "^1.0.0",
     "tinycolor2": "^1.4.1",
